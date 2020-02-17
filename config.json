@@ -1,7 +1,7 @@
 {
-  "mongodb": "mo",
-  "mongocoll": "coll",
-  "mongodburl": "mongodb://wpsroot:wpspwd@localhost:27017",
+  "mongodb": "mydb",
+  "mongocoll": "mycoll",
+  "mongodburl": "mongodb://root:pwd@localhost:27017",
   "esurl": "http://127.0.0.1:9200",
-  "esindex": "mo.coll"
+  "tspath": "/home/data/test/"
 }
