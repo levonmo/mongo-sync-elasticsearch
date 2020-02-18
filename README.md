@@ -33,4 +33,3 @@
 * 1.启动服务的用户需要拥有参数tspath路径下文件的创建查看删除权限
 * 2.参数mongodburl中的mongodb用户需要拥有admin库下的oplog.rs查询权限
 * 3.在es中创建的索引名字是 mongodb+'.'+mongocoll，即: mydb.mycoll
-
