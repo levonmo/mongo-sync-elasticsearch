@@ -1,5 +1,5 @@
 # mongodb-sync-elasticsearch 使用说明
-
+## 注：main是linux下的可执行文件，main.exe是win下的可执行文件
 ## 1.创建配置文件 config.json 内容如下
 ```
 {
