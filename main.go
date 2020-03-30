@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"reflect"
 	"runtime"
 	"sync"
 	"time"
@@ -366,19 +365,6 @@ func main() {
 		for {
 			select {
 			case obj := <-insertes:
-
-				//各个库适配
-				switch config.MongoDB + "." + config.MongoColl {
-				case "translation_wx.job":
-					obj.Obj = FixTranslationWXJob(obj.Obj)
-				case "translation.job":
-					obj.Obj = FixTranslationJob(obj.Obj)
-				case "ksodcapiapp.job":
-					obj.Obj = FixKsodcapiappJob(obj.Obj)
-				case "ksowebdcapiapp.job":
-					obj.Obj = FixKsowebdcapiappJob(obj.Obj)
-
-				}
 				doc := elastic.NewBulkIndexRequest().Index(config.MongoDB + "." + config.MongoColl).Type("_doc").Id(obj.ID).Doc(obj.Obj)
 				bulksLock.Lock()
 				bulks = append(bulks, doc)
