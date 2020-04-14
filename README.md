@@ -1,5 +1,5 @@
-# mongodb-sync-elasticsearch 使用说明
-## 注：main是linux下的可执行文件，main.exe是win下的可执行文件
+# mongo-sync-elastic 使用说明
+## 注：bin目录下的：mongo-sync-elastic是linux的可执行文件， mongo-sync-elastic.exe是windows的可执行文件
 
 ## 1.快速开始
 * linux: main -f config.json
