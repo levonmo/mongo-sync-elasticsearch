@@ -1,6 +1,12 @@
 # mongodb-sync-elasticsearch 使用说明
 ## 注：main是linux下的可执行文件，main.exe是win下的可执行文件
-## 1.创建配置文件 config.json 内容如下
+
+## 1.快速开始
+* linux: main -f config.json
+* windows：main.exe -f config.json
+* 即可
+
+## 2.配置文件 config.json 内容如下
 ```
 {
   "mongodb": "mydb",
@@ -15,12 +21,7 @@
 * mongocoll: 集合名字
 * mongodburl: 连接数据库的url
 * esurl: 连接es的url
-* tspath: 该参数是用于服务意外停止做数据恢复的(可不填，默认是程序执行所在的路径下oplogts文件夹创建文件)
-
-
-## 2.启动 mongodb-sync-elasticsearch 服务 
-* 执行: ./mongodb-sync-elasticsearch -f config.json 即可
-
+* tspath: 非必须参数。用于服务意外停止做数据恢复的，或断电续传使用 (默认是程序执行所在的路径下oplogts文件夹保存同步状态)
 
 ## 3.tspath参数的作用
 * 当已经完成全量同步的时候，程序会在tspath路径下创建 oplogts/mydb_mycoll_latestoplog.log 文件，纪录下时间节点，意味着在该时间节点之前的数据都已完成同步，但当全量同步失败不会创建该文件
