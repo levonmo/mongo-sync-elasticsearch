@@ -4,7 +4,6 @@
 ## 1.快速开始
 * linux: bin/mongo-sync-elastic -f config.json
 * windows：bin/mongo-sync-elastic.exe -f config.json
-* 即可
 
 ## 2.配置文件 config.json 内容如下
 ```
