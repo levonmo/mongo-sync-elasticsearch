@@ -39,7 +39,7 @@
 ****
 
 # mongo-sync-elastic instructions
-## tips：bin folder：mongo-sync-elastic is linux executable， mongo-sync-elastic.ex is windows executable
+## tips：bin folder：mongo-sync-elastic is linux executable， mongo-sync-elastic.exe is windows executable
 
 ## 1.Quickstart
 * linux: bin/mongo-sync-elastic -f config.json
