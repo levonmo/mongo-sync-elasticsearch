@@ -65,9 +65,7 @@
 ## 3.tspath param explain
 * When full synchronization has been completed，The program will be created under the path of tspath:oplogts/mydb_mycoll_latestoplog.log file，record time node，It means that the data before the time node has been synchronized，But when full synchronization fails, the file will not be created
 * Update every hour mydb_mycoll_latestoplog.log Time node in the file
-* When the service stops unexpectedly，and I don't want to have another full synchronization，Just synchronize the data that has not been synchronized since the 
-
-service stopped，The tspath cannot be changed when the service starts again，Recover data from tspath
+* When the service stops unexpectedly，and I don't want to have another full synchronization，Just synchronize the data that has not been synchronized since the service stopped，The tspath cannot be changed when the service starts again，Recover data from tspath
 * When the service stops unexpectedly,and want to resynchronize from earliest，You can delete the corresponding log file under the tspath or reselect a tspath
 
 
