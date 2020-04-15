@@ -33,3 +33,51 @@
 * 1.启动服务的用户需要拥有参数tspath路径下文件的创建查看删除权限
 * 2.参数mongodburl中的mongodb用户需要拥有admin库下的oplog.rs查询权限
 * 3.在es中创建的索引名字是 mongodb+'.'+mongocoll，即: mydb.mycoll
+
+
+
+****
+
+# mongo-sync-elastic instructions
+## tips：bin folder：mongo-sync-elastic is linux executable， mongo-sync-elastic.ex is windows executable
+
+## 1.Quickstart
+* linux: bin/mongo-sync-elastic -f config.json
+* windows：bin/mongo-sync-elastic.exe -f config.json
+
+## 2.configuration file config.json content:
+```
+{
+  "mongodb": "mydb",
+  "mongocoll": "mycoll",
+  "mongodburl": "mongodb://myroot:mypwd@localhost:27017",
+  "esurl": "http://127.0.0.1:9200",
+  "tspath": "./"
+}
+```
+### param explain:
+* mongodb: db name
+* mongocoll: collection name
+* mongodburl: mongodb url
+* esurl: es url
+* tspath: non required parameter。For data recovery when the service stops unexpectedly，Or when resuming a breakpoint(The default is to save the synchronization 
+
+status in the oplogts folder under the path where the program is executed)
+
+## 3.tspath param explain
+* When full synchronization has been completed，The program will be created under the path of tspath: oplogts/mydb_mycoll_latestoplog.log file，record time node，It 
+
+means that the data before the time node has been synchronized，But when full synchronization fails, the file will not be created
+* Update every hour mydb_mycoll_latestoplog.log Time node in the file
+* When the service stops unexpectedly，and I don't want to have another full synchronization，Just synchronize the data that has not been synchronized since the 
+
+service stopped，The tspath cannot be changed when the service starts again，Recover data from tspath
+* When the service stops unexpectedly,and want to resynchronize from earliest，You can delete the corresponding log file under the tspath or reselect a tspath
+
+
+### Remarks:
+* 1.The user who starts the service needs to have the permission to create, view and delete the file under the parameter tspath path
+* 2.The mongodb user in the parameter mongodb URL needs to have the query permission of oplog.rs under the admin Library
+* 3.The index name created in ES is mongodb+'.'+mongocoll，eg: mydb.mycoll
+
+
