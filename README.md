@@ -63,9 +63,7 @@
 * tspath: non required parameter。For data recovery when the service stops unexpectedly，Or when resuming a breakpoint(The default is to save the synchronization status in the oplogts folder under the path where the program is executed)
 
 ## 3.tspath param explain
-* When full synchronization has been completed，The program will be created under the path of tspath: oplogts/mydb_mycoll_latestoplog.log file，record time node，It 
-
-means that the data before the time node has been synchronized，But when full synchronization fails, the file will not be created
+* When full synchronization has been completed，The program will be created under the path of tspath:oplogts/mydb_mycoll_latestoplog.log file，record time node，It means that the data before the time node has been synchronized，But when full synchronization fails, the file will not be created
 * Update every hour mydb_mycoll_latestoplog.log Time node in the file
 * When the service stops unexpectedly，and I don't want to have another full synchronization，Just synchronize the data that has not been synchronized since the 
 
