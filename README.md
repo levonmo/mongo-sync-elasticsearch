@@ -10,7 +10,7 @@
 {
   "mongodb": "mydb",
   "mongocoll": "mycoll",
-  "mongodburl": "mongodb://wpsroot:wpspwd@localhost:27017",
+  "mongodburl": "mongodb://myroot:mypwd@localhost:27017",
   "esurl": "http://127.0.0.1:9200",
   "tspath": "./"
 }
