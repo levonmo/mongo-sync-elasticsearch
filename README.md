@@ -60,9 +60,7 @@
 * mongocoll: collection name
 * mongodburl: mongodb url
 * esurl: es url
-* tspath: non required parameter。For data recovery when the service stops unexpectedly，Or when resuming a breakpoint(The default is to save the synchronization 
-
-status in the oplogts folder under the path where the program is executed)
+* tspath: non required parameter。For data recovery when the service stops unexpectedly，Or when resuming a breakpoint(The default is to save the synchronization status in the oplogts folder under the path where the program is executed)
 
 ## 3.tspath param explain
 * When full synchronization has been completed，The program will be created under the path of tspath: oplogts/mydb_mycoll_latestoplog.log file，record time node，It 
