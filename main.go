@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"mongo-sync-elastic/utils"
 	"os"
 	"runtime"
 	"sync"
@@ -13,6 +12,7 @@ import (
 
 	"mongo-sync-elastic/log"
 	"mongo-sync-elastic/service"
+	"mongo-sync-elastic/utils"
 
 	"github.com/olivere/elastic"
 	"go.mongodb.org/mongo-driver/bson"
@@ -55,7 +55,7 @@ func main() {
 		return
 	} else if argsCount == 2 {
 		if os.Args[1] == "-h" || os.Args[1] == "-help" {
-			fmt.Println(` -f + config.json: es: ./main -f /data/config.json`)
+			fmt.Println(` -f + config.json , for example: ./mongo-sync-elastic -f config.json`)
 		} else {
 			fmt.Println("-h/-help for help")
 		}
@@ -95,7 +95,7 @@ func main() {
 	//尝试有没有打开tspath权限
 	var testoplogFile string
 	switch config.SyncType {
-	case service.SyncTypeDefault,service.SyncTypeIncr:
+	case service.SyncTypeDefault, service.SyncTypeIncr:
 		if config.Tspath == "" {
 			testoplogFile = "./oplogts/test_mongodb_sync_es.log"
 		} else {
@@ -114,7 +114,6 @@ func main() {
 		}
 	case service.SyncTypeFull:
 	}
-
 
 	//连接es和mongodb
 	esCli, err := elastic.NewClient(elastic.SetURL(config.EsUrl))
@@ -144,7 +143,6 @@ func main() {
 	//获取latestoplog
 	// 1.从mongodb数据库中获取
 	// 2.从oplog日志文件获取
-
 	var oplogFile string
 	if config.Tspath == "" {
 		oplogFile = "./oplogts/" + config.MongoDB + "_" + config.MongoColl + "_latestoplog.log"
@@ -152,18 +150,22 @@ func main() {
 		oplogFile = config.Tspath + "/oplogts/" + config.MongoDB + "_" + config.MongoColl + "_latestoplog.log"
 	}
 	exists := utils.Exists(oplogFile)
+
 	var latestoplog OpLog
-	if !exists {
-		//开始同步之前找到最新的ts
-		filter := validOps()
-		opts := &options.FindOneOptions{}
-		opts.SetSort(bson.M{"$natural": -1})
-		err = localColl.FindOne(context.Background(), filter, opts).Decode(&latestoplog)
-		if err != nil {
-			molog.ErrorLog.Printf("find latest oplog.rs err:%v\n", err)
-			return
+	if !exists || config.SyncType == service.SyncTypeFull {
+
+		if config.SyncType != service.SyncTypeFull {
+			//开始同步之前找到最新的ts
+			filter := validOps()
+			opts := &options.FindOneOptions{}
+			opts.SetSort(bson.M{"$natural": -1})
+			err = localColl.FindOne(context.Background(), filter, opts).Decode(&latestoplog)
+			if err != nil {
+				molog.ErrorLog.Printf("find latest oplog.rs err:%v\n", err)
+				return
+			}
+			molog.InfoLog.Printf("get latest oplog.rs ts: %v", latestoplog.Timestamp)
 		}
-		molog.InfoLog.Printf("get latest oplog.rs ts: %v", latestoplog.Timestamp)
 
 		//进行全量同步
 		coll := cli.Database(config.MongoDB).Collection(config.MongoColl)
@@ -242,6 +244,9 @@ func main() {
 		close(mapchan)
 		syncg.Wait()
 		molog.InfoLog.Printf("sync historical data success")
+		if config.SyncType == service.SyncTypeFull {
+			return
+		}
 		// 全量数据同步完成
 		f, err := os.Create(oplogFile)
 		if err != nil {
@@ -281,7 +286,7 @@ func main() {
 			return
 		}
 		latestoplog.Timestamp = oplogts.LatestOplogTimestamp
-		molog.infoLog.Printf("get oplog ts success from file,ts:%v", latestoplog.Timestamp)
+		molog.InfoLog.Printf("get oplog ts success from file,ts:%v", latestoplog.Timestamp)
 		f.Close()
 	}
 
