@@ -15,6 +15,8 @@
   "tspath": "./"
 }
 ```
+* 更多参数看第五点
+
 ### 参数说明:
 * mongodb: 数据库名字
 * mongocoll: 集合名字
@@ -29,12 +31,27 @@
 * 当服务意外停止时，并希望从0开始重新同步一次，则可以吧tspath下面删除对应的log文件 或 重新选择一个tspath即可
 
 
-### 备注:
-* 1.启动服务的用户需要拥有参数tspath路径下文件的创建查看删除权限
-* 2.参数mongodburl中的mongodb用户需要拥有admin库下的oplog.rs查询权限
-* 3.在es中创建的索引名字是 mongodb+'.'+mongocoll，即: mydb.mycoll
+### 4.备注:
+* 1.涉及增量同步的部分，需要mongodb的部署形式是副本集 或者 单实例开启了oplog
+* 2.启动服务的用户需要拥有参数tspath路径下文件的创建查看删除权限
+* 3.参数mongodburl中的mongodb用户需要拥有admin库下的oplog.rs查询权限
+* 4.在es中创建的索引名字是 mongodb+'.'+mongocoll，即: mydb.mycoll
 
 
+### 5.更多非必须参数:
+* syncType: 同步类型
+```
+有三个值 0，1，2可选,分别表示：
+ 0:默认值，表示全量+增量同步
+ 1:表示只进行全量同步，全量同步结束后程序会退出
+ 2:表示只进行增量同步   
+
+例如 config.json 
+{
+"syncType":1 //只进行全量同步
+}
+
+```
 
 ****
 
@@ -55,6 +72,8 @@
   "tspath": "./"
 }
 ```
+* See the fifth point for more parameters
+
 ### param explain:
 * mongodb: db name
 * mongocoll: collection name
@@ -69,9 +88,23 @@
 * When the service stops unexpectedly,and want to resynchronize from earliest，You can delete the corresponding log file under the tspath or reselect a tspath
 
 
-### Remarks:
-* 1.The user who starts the service needs to have the permission to create, view and delete the file under the parameter tspath path
-* 2.The mongodb user in the parameter mongodb URL needs to have the query permission of oplog.rs under the admin Library
-* 3.The index name created in ES is mongodb+'.'+mongocoll，eg: mydb.mycoll
+### 4.Remarks:
+* 1.Involving incremental synchronization, the deployment form of mongodb needs to be a replica set or a single instance with oplog enabled
+* 2.The user who starts the service needs to have the permission to create, view and delete the file under the parameter tspath path
+* 3.The mongodb user in the parameter mongodb URL needs to have the query permission of oplog.rs under the admin Library
+* 4.The index name created in ES is mongodb+'.'+mongocoll，eg: mydb.mycoll
+
+### 5.More optional parameters:
+* 1.syncType: Synchronization type
+```
+There are three values 0, 1, 2 optional, respectively:
+0:The default value,means full + incremental synchronization
+1:It means only full synchronization, the program will exit after the full synchronization
+2:Indicates only incremental synchronization
+eg ：config.json:
+{
+    "syncType":1 // Only full sync
+}
+```
 
 
