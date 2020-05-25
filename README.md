@@ -34,7 +34,7 @@
 ### 4.备注:
 * 1.涉及增量同步的部分，需要mongodb的部署形式是副本集 或者 单实例开启了oplog
 * 2.启动服务的用户需要拥有参数tspath路径下文件的创建查看删除权限
-* 3.参数mongodburl中的mongodb用户需要拥有admin库下的oplog.rs查询权限
+* 3.参数mongodburl中的mongodb用户需要拥有local库下的oplog.rs查询权限
 * 4.在es中创建的索引名字是 mongodb+'.'+mongocoll，即: mydb.mycoll
 
 
