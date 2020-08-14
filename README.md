@@ -35,7 +35,7 @@
 * 1.涉及增量同步的部分，需要mongodb的部署形式是副本集 或者 单实例开启了oplog
 * 2.启动服务的用户需要拥有参数tspath路径下文件的创建查看删除权限
 * 3.参数mongodburl中的mongodb用户需要拥有local库下的oplog.rs查询权限
-* 4.在es中创建的索引名字是 mongoDb+'__'+mongoColl，即: mongodb__mongocoll (大写全部转换为小写)
+* 4.在es中创建的索引名字是 mongodb+'__'+mongocoll，即: mongodb__mongocoll (大写全部转换为小写)
 
 
 ### 5.更多非必须参数:
@@ -92,7 +92,7 @@
 * 1.Involving incremental synchronization, the deployment form of mongodb needs to be a replica set or a single instance with oplog enabled
 * 2.The user who starts the service needs to have the permission to create, view and delete the file under the parameter tspath path
 * 3.The mongodb user in the parameter mongodb URL needs to have the query permission of oplog.rs under the admin Library
-* 4.The index name created in ES is mongodb+'.'+mongocoll，eg: mydb.mycoll
+* 4.The index name created in ES is mongodb+'__'+mongocoll，eg: mydb__mycoll
 
 ### 5.More optional parameters:
 * 1.syncType: Synchronization type
