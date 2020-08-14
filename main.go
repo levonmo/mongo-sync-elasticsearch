@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -76,6 +78,8 @@ func main() {
 		return
 	}
 	molog.InfoLog.Printf(" init config success %+v \n", config)
+	elasticIndex := strings.ToLower(config.MongoDB + "__" + config.MongoColl)
+	molog.InfoLog.Printf("elastic index is : %s", elasticIndex)
 
 	//创建oplogts文件夹
 	var oplogts string
@@ -116,7 +120,7 @@ func main() {
 	}
 
 	//连接es和mongodb
-	esCli, err := elastic.NewClient(elastic.SetURL(config.EsUrl))
+	esCli, err := elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(config.EsUrl))
 	if err != nil {
 		molog.ErrorLog.Printf("connect es  err:%v\n", err)
 		return
@@ -130,13 +134,6 @@ func main() {
 	defer cli.Disconnect(context.Background())
 	molog.InfoLog.Printf("connect mongodb success\n")
 
-	go func() {
-		for {
-			time.Sleep(time.Second * 60 * 2)
-			runtime.GC()
-		}
-	}()
-
 	localColl := cli.Database("local").Collection("oplog.rs")
 	dbColl := cli.Database(config.MongoDB).Collection(config.MongoColl)
 
@@ -145,9 +142,9 @@ func main() {
 	// 2.从oplog日志文件获取
 	var oplogFile string
 	if config.Tspath == "" {
-		oplogFile = "./oplogts/" + config.MongoDB + "_" + config.MongoColl + "_latestoplog.log"
+		oplogFile = "./oplogts/" + elasticIndex + "_latestoplog.log"
 	} else {
-		oplogFile = config.Tspath + "/oplogts/" + config.MongoDB + "_" + config.MongoColl + "_latestoplog.log"
+		oplogFile = config.Tspath + "/oplogts/" + elasticIndex + "_latestoplog.log"
 	}
 	exists := utils.Exists(oplogFile)
 
@@ -179,6 +176,7 @@ func main() {
 		mapchan := make(chan map[string]interface{}, 10000)
 		syncg := sync.WaitGroup{}
 
+		// 统计同步了给
 		for i := 0; i < 3; i++ {
 			syncg.Add(1)
 			go func(i int) {
@@ -195,14 +193,21 @@ func main() {
 							if !ok {
 								break
 							}
-							id := obj["_id"].(primitive.ObjectID).Hex()
+							var id string
+							idTypeOf := reflect.TypeOf(obj["_id"])
+							switch idTypeOf.String() {
+							case "primitive.ObjectID":
+								id = obj["_id"].(primitive.ObjectID).Hex()
+							case "string":
+								id = obj["_id"].(string)
+							}
 							delete(obj, "_id")
 							bytes, err := json.Marshal(obj)
 							if err != nil {
 								molog.ErrorLog.Printf("sync historical data json marshal err:%v id:%s\n", err, id)
 								continue
 							}
-							doc := elastic.NewBulkIndexRequest().Index(config.MongoDB + "." + config.MongoColl).Type("_doc").Id(id).Doc(string(bytes))
+							doc := elastic.NewBulkIndexRequest().Index(elasticIndex).Type("_doc").Id(id).Doc(string(bytes))
 							bulks[count] = doc
 							count++
 						}
@@ -343,7 +348,7 @@ func main() {
 		for {
 			select {
 			case obj := <-insertes:
-				doc := elastic.NewBulkIndexRequest().Index(config.MongoDB + "." + config.MongoColl).Type("_doc").Id(obj.ID).Doc(obj.Obj)
+				doc := elastic.NewBulkIndexRequest().Index(elasticIndex).Type("_doc").Id(obj.ID).Doc(obj.Obj)
 				bulksLock.Lock()
 				bulks = append(bulks, doc)
 				bulksLock.Unlock()
@@ -388,30 +393,41 @@ func main() {
 			continue
 		}
 		ts.LatestOplogTimestamp = o.Timestamp
+		var id string
+		idTypeOf := reflect.TypeOf(o.Doc["_id"])
+		switch idTypeOf.String() {
+		case "primitive.ObjectID":
+			id = o.Doc["_id"].(primitive.ObjectID).Hex()
+		case "string":
+			id = o.Doc["_id"].(string)
+		}
 		switch o.Operation {
 		case "i":
-			id := o.Doc["_id"].(primitive.ObjectID).Hex()
 			delete(o.Doc, "_id")
 			var obj ElasticObj
 			obj.ID = id
 			obj.Obj = o.Doc
 			insertes <- obj
 		case "d":
-			id := o.Doc["_id"].(primitive.ObjectID).Hex()
-			_, err := esCli.Delete().Index(config.MongoDB + "." + config.MongoColl).Type("_doc").Id(id).Do(context.Background())
+			_, err := esCli.Delete().Index(elasticIndex).Type("_doc").Id(id).Do(context.Background())
 			if err != nil {
 				molog.ErrorLog.Printf("delete document in es err:%v id:%s\n", err, id)
 				continue
 			}
 		case "u":
-			id := o.Update["_id"].(primitive.ObjectID).Hex()
-			objId, err := primitive.ObjectIDFromHex(id)
-			if err != nil {
-				molog.ErrorLog.Printf("objectid id err:%v id:%s\n", err, id)
-				continue
-			}
 			f := bson.M{
-				"_id": objId,
+				"_id": id,
+			}
+			if idTypeOf.String() == "primitive.ObjectID" {
+				id = o.Update["_id"].(primitive.ObjectID).Hex()
+				objId, err := primitive.ObjectIDFromHex(id)
+				if err != nil {
+					molog.ErrorLog.Printf("objectid id err:%v id:%s\n", err, id)
+					continue
+				}
+				f = bson.M{
+					"_id": objId,
+				}
 			}
 			obj := make(map[string]interface{})
 			err = dbColl.FindOne(context.Background(), f).Decode(&obj)
