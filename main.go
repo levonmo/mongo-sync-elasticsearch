@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"mongo-sync-elastic/log"
-	"mongo-sync-elastic/service"
-	"mongo-sync-elastic/utils"
+	"mongo-sync-elasticsearch/log"
+	"mongo-sync-elasticsearch/service"
+	"mongo-sync-elasticsearch/utils"
 
 	"github.com/olivere/elastic"
 	"go.mongodb.org/mongo-driver/bson"
@@ -207,7 +207,7 @@ func main() {
 								molog.ErrorLog.Printf("sync historical data json marshal err:%v id:%s\n", err, id)
 								continue
 							}
-							doc := elastic.NewBulkIndexRequest().Index(elasticIndex).Type("_doc").Id(id).Doc(string(bytes))
+							doc := elastic.NewBulkIndexRequest().Index(elasticIndex).Id(id).Doc(string(bytes))
 							bulks[count] = doc
 							count++
 						}
@@ -348,7 +348,7 @@ func main() {
 		for {
 			select {
 			case obj := <-insertes:
-				doc := elastic.NewBulkIndexRequest().Index(elasticIndex).Type("_doc").Id(obj.ID).Doc(obj.Obj)
+				doc := elastic.NewBulkIndexRequest().Index(elasticIndex).Id(obj.ID).Doc(obj.Obj)
 				bulksLock.Lock()
 				bulks = append(bulks, doc)
 				bulksLock.Unlock()
@@ -358,10 +358,9 @@ func main() {
 
 	var ts OplogTimestamp
 
-	//每个小时纪录一次最新的oplog
 	go func() {
 		for {
-			time.Sleep(time.Second * 60 * 60)
+			time.Sleep(time.Second * 20)
 			if ts.LatestOplogTimestamp.T > latestoplog.Timestamp.T {
 				f, err := os.Create(oplogFile)
 				if err != nil {
@@ -409,7 +408,7 @@ func main() {
 			obj.Obj = o.Doc
 			insertes <- obj
 		case "d":
-			_, err := esCli.Delete().Index(elasticIndex).Type("_doc").Id(id).Do(context.Background())
+			_, err := esCli.Delete().Index(elasticIndex).Id(id).Do(context.Background())
 			if err != nil {
 				molog.ErrorLog.Printf("delete document in es err:%v id:%s\n", err, id)
 				continue
