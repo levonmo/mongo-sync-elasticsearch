@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -12,7 +11,9 @@ import (
 	"sync"
 	"time"
 
+	"mongo-sync-elasticsearch/config"
 	"mongo-sync-elasticsearch/log"
+	"mongo-sync-elasticsearch/model"
 	"mongo-sync-elasticsearch/service"
 	"mongo-sync-elasticsearch/utils"
 
@@ -29,77 +30,35 @@ func validOps() bson.M {
 
 var opCodes = [...]string{"c", "i", "u", "d"}
 
-type OpLog struct {
-	Timestamp    primitive.Timestamp    "ts"
-	HistoryID    int64                  "h"
-	MongoVersion int                    "v"
-	Operation    string                 "op"
-	Namespace    string                 "ns"
-	Doc          map[string]interface{} "o"
-	Update       map[string]interface{} "o2"
-}
-
-type ElasticObj struct {
-	ID  string
-	Obj map[string]interface{}
-}
-
 type OplogTimestamp struct {
 	LatestOplogTimestamp primitive.Timestamp `json:"latest_oplog_timestamp"`
 }
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	filePath := ""
-	argsCount := len(os.Args)
-	if argsCount == 1 {
-		fmt.Println("-h/-help for help")
-		return
-	} else if argsCount == 2 {
-		if os.Args[1] == "-h" || os.Args[1] == "-help" {
-			fmt.Println(` -f + config.json , for example: ./mongo-sync-elastic -f config.json`)
-		} else {
-			fmt.Println("-h/-help for help")
-		}
-		return
-	} else if argsCount == 3 {
-		if os.Args[1] == "-f" {
-			filePath = os.Args[2]
-		}
-	} else {
-		fmt.Println("-h/-help for help")
+	filePath := config.GetConfigPath()
+	if strings.TrimSpace(filePath) == "" {
+		molog.Errorf("config path is illegal")
 		return
 	}
-
-	//init config
-	config, err := service.InitConfig(filePath)
-	if err != nil {
-		molog.ErrorLog.Printf("init config err:%v\n", err)
-		return
-	}
-	molog.InfoLog.Printf(" init config success %+v \n", config)
-	elasticIndex := strings.ToLower(config.MongoDB + "__" + config.MongoColl)
-	molog.InfoLog.Printf("elastic index is : %s", elasticIndex)
-
-	//创建oplogts文件夹
-	var oplogts string
+	config := config.InitConfig(filePath)
+	var opLogTs string
 	if config.Tspath == "" {
-		oplogts = "./oplogts"
+		opLogTs = "./oplogts"
 	} else {
-		oplogts = config.Tspath + "/oplogts"
-	}
-	if !utils.Exists(oplogts) {
-		err = os.Mkdir(oplogts, os.ModePerm)
-		if err != nil {
-			molog.ErrorLog.Printf("os mkdir folder fail,err:%v", err)
-			return
-		}
+		opLogTs = config.Tspath + "/oplogts"
 	}
 
 	//尝试有没有打开tspath权限
 	var testoplogFile string
 	switch config.SyncType {
 	case service.SyncTypeDefault, service.SyncTypeIncr:
+		if !utils.Exists(opLogTs) {
+			if err := os.Mkdir(opLogTs, os.ModePerm); err != nil {
+				molog.Errorf("os mkdir folder fail,err:%v", err)
+				return
+			}
+		}
 		if config.Tspath == "" {
 			testoplogFile = "./oplogts/test_mongodb_sync_es.log"
 		} else {
@@ -107,13 +66,13 @@ func main() {
 		}
 		f, err := os.Create(testoplogFile)
 		if err != nil {
-			molog.ErrorLog.Printf("create file fail in tspath err:%v", err)
+			molog.Errorf("create file fail in tspath err:%v", err)
 			return
 		}
 		f.Close()
 		err = os.Remove(testoplogFile)
 		if err != nil {
-			molog.ErrorLog.Printf("remove file fail in tspath err:%v", err)
+			molog.Errorf("remove file fail in tspath err:%v", err)
 			return
 		}
 	case service.SyncTypeFull:
@@ -122,17 +81,17 @@ func main() {
 	//连接es和mongodb
 	esCli, err := elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(config.EsUrl))
 	if err != nil {
-		molog.ErrorLog.Printf("connect es  err:%v\n", err)
+		molog.Errorf("connect es  err:%v", err)
 		return
 	}
-	molog.InfoLog.Printf("connect es success\n")
+	molog.Infof("connect es success")
 	cli, err := mongo.Connect(context.Background(), options.Client().ApplyURI(config.MongodbUrl))
 	if err != nil {
-		molog.ErrorLog.Printf("mongo connect err:%v\n", err)
+		molog.Errorf("mongo connect err:%v", err)
 		return
 	}
 	defer cli.Disconnect(context.Background())
-	molog.InfoLog.Printf("connect mongodb success\n")
+	molog.Infof("connect mongodb success")
 
 	localColl := cli.Database("local").Collection("oplog.rs")
 	dbColl := cli.Database(config.MongoDB).Collection(config.MongoColl)
@@ -142,15 +101,14 @@ func main() {
 	// 2.从oplog日志文件获取
 	var oplogFile string
 	if config.Tspath == "" {
-		oplogFile = "./oplogts/" + elasticIndex + "_latestoplog.log"
+		oplogFile = "./oplogts/" + config.ElasticIndex + "_latestoplog.log"
 	} else {
-		oplogFile = config.Tspath + "/oplogts/" + elasticIndex + "_latestoplog.log"
+		oplogFile = config.Tspath + "/oplogts/" + config.ElasticIndex + "_latestoplog.log"
 	}
 	exists := utils.Exists(oplogFile)
 
-	var latestoplog OpLog
+	var latestoplog model.OpLog
 	if !exists || config.SyncType == service.SyncTypeFull {
-
 		if config.SyncType != service.SyncTypeFull {
 			//开始同步之前找到最新的ts
 			filter := validOps()
@@ -158,20 +116,20 @@ func main() {
 			opts.SetSort(bson.M{"$natural": -1})
 			err = localColl.FindOne(context.Background(), filter, opts).Decode(&latestoplog)
 			if err != nil {
-				molog.ErrorLog.Printf("find latest oplog.rs err:%v\n", err)
+				molog.Errorf("find latest oplog.rs err:%v", err)
 				return
 			}
-			molog.InfoLog.Printf("get latest oplog.rs ts: %v", latestoplog.Timestamp)
+			molog.Infof("get latest oplog.rs ts: %v", latestoplog.Timestamp)
 		}
 
 		//进行全量同步
 		coll := cli.Database(config.MongoDB).Collection(config.MongoColl)
 		find, err := coll.Find(context.Background(), bson.M{})
 		if err != nil {
-			molog.ErrorLog.Printf("find %s err:%v\n", config.MongoDB+"."+config.MongoColl, err)
+			molog.Errorf("find %s err:%v", config.MongoDB+"."+config.MongoColl, err)
 			return
 		}
-		molog.InfoLog.Printf("start sync historical data...")
+		molog.Infof("start sync historical data...")
 
 		mapchan := make(chan map[string]interface{}, 10000)
 		syncg := sync.WaitGroup{}
@@ -180,14 +138,14 @@ func main() {
 		for i := 0; i < 3; i++ {
 			syncg.Add(1)
 			go func(i int) {
-				molog.InfoLog.Printf("sync historical data goroutine: %d start \n", i)
-				defer molog.InfoLog.Printf("sync historical data goroutine: %d exit \n", i)
+				molog.Infof("sync historical data goroutine: %d start ", i)
+				defer molog.Infof("sync historical data goroutine: %d exit ", i)
 				defer syncg.Done()
-				bulks := make([]elastic.BulkableRequest, 5000)
+				bulks := make([]elastic.BulkableRequest, service.MaxFullSyncBatchInsertCount)
 				bulk := esCli.Bulk()
 				for {
 					count := 0
-					for i := 0; i < 5000; i++ {
+					for i := 0; i < service.MaxFullSyncBatchInsertCount; i++ {
 						select {
 						case obj, ok := <-mapchan:
 							if !ok {
@@ -204,10 +162,10 @@ func main() {
 							delete(obj, "_id")
 							bytes, err := json.Marshal(obj)
 							if err != nil {
-								molog.ErrorLog.Printf("sync historical data json marshal err:%v id:%s\n", err, id)
+								molog.Errorf("sync historical data json marshal err:%v id:%s", err, id)
 								continue
 							}
-							doc := elastic.NewBulkIndexRequest().Index(elasticIndex).Id(id).Doc(string(bytes))
+							doc := elastic.NewBulkIndexRequest().Index(config.ElasticIndex).Id(id).Doc(string(bytes))
 							bulks[count] = doc
 							count++
 						}
@@ -217,13 +175,13 @@ func main() {
 						bulk.Add(bulks[:count]...)
 						bulkResponse, err := bulk.Do(context.Background())
 						if err != nil {
-							molog.ErrorLog.Printf("batch processing, bulk do err:%v count:%d\n", err, len(bulks))
+							molog.Errorf("batch processing, bulk do err:%v count:%d", err, len(bulks))
 							//很可能是es挂了，等待十秒再重试
 							time.Sleep(time.Second * 10)
 							continue
 						}
 						for _, v := range bulkResponse.Failed() {
-							molog.ErrorLog.Printf("index: %s, type: %s, _id: %s, error: %+v\n", v.Index, v.Type, v.Id, *v.Error)
+							molog.Errorf("index: %s, type: %s, _id: %s, error: %+v", v.Index, v.Type, v.Id, *v.Error)
 						}
 						bulk.Reset()
 						count = 0
@@ -241,32 +199,32 @@ func main() {
 			a := make(map[string]interface{})
 			err = find.Decode(&a)
 			if err != nil {
-				molog.ErrorLog.Printf("sync historical data decode %s db err:%v\n", config.MongoDB+"."+config.MongoColl, err)
+				molog.Errorf("sync historical data decode %s db err:%v", config.MongoDB+"."+config.MongoColl, err)
 				break
 			}
 			mapchan <- a
 		}
 		close(mapchan)
 		syncg.Wait()
-		molog.InfoLog.Printf("sync historical data success")
+		molog.Infof("sync historical data success")
 		if config.SyncType == service.SyncTypeFull {
 			return
 		}
 		// 全量数据同步完成
 		f, err := os.Create(oplogFile)
 		if err != nil {
-			molog.ErrorLog.Printf("os create oplog file err:%v", err)
+			molog.Errorf("os create oplog file err:%v", err)
 			return
 		}
 		var op OplogTimestamp
 		op.LatestOplogTimestamp = latestoplog.Timestamp
 		bytes, err := json.Marshal(op)
 		if err != nil {
-			molog.ErrorLog.Printf("oplog json marshal err:%v,ts:%v", err, latestoplog)
+			molog.Errorf("oplog json marshal err:%v,ts:%v", err, latestoplog)
 		}
 		_, err = f.Write(bytes)
 		if err != nil {
-			molog.ErrorLog.Printf("oplog file writer err:%v", err)
+			molog.Errorf("oplog file writer err:%v", err)
 			return
 		}
 		err = f.Close()
@@ -276,22 +234,22 @@ func main() {
 	} else {
 		f, err := os.Open(oplogFile)
 		if err != nil {
-			molog.ErrorLog.Printf("open oplogfile err:%v", err)
+			molog.Errorf("open oplogfile err:%v", err)
 			return
 		}
 		bytes, err := ioutil.ReadAll(f)
 		if err != nil {
-			molog.ErrorLog.Printf("open oplogfile err:%v", err)
+			molog.Errorf("open oplogfile err:%v", err)
 			return
 		}
 		var oplogts = OplogTimestamp{}
 		err = json.Unmarshal(bytes, &oplogts)
 		if err != nil {
-			molog.ErrorLog.Printf("json unmarshal oplogfile err:%v", err)
+			molog.Errorf("json unmarshal oplogfile err:%v", err)
 			return
 		}
 		latestoplog.Timestamp = oplogts.LatestOplogTimestamp
-		molog.InfoLog.Printf("get oplog ts success from file,ts:%v", latestoplog.Timestamp)
+		molog.Infof("get oplog ts success from file,ts:%v", latestoplog.Timestamp)
 		f.Close()
 	}
 
@@ -309,12 +267,12 @@ func main() {
 
 	cursor, err := localColl.Find(context.Background(), query, optss)
 	if err != nil {
-		molog.ErrorLog.Printf("tail oplog.rs based latestoplog timestamp err:%v\n", err)
+		molog.Errorf("tail oplog.rs based latestoplog timestamp err:%v", err)
 		return
 	}
 
-	molog.InfoLog.Printf("start sync increment data...")
-	insertes := make(chan ElasticObj, 10000)
+	molog.Infof("start sync increment data...")
+	incrSyncChan := make(chan model.MongoDoc, service.MaxIncrSyncBatchInsertCount)
 
 	go func() {
 		bulk := esCli.Bulk()
@@ -331,12 +289,12 @@ func main() {
 					bulk.Add(bulks...)
 					bulkResponse, err := bulk.Do(context.Background())
 					if err != nil {
-						molog.ErrorLog.Printf("batch processing, bulk do err:%v count:%d\n", err, len(bulks))
+						molog.Errorf("batch processing, bulk do err:%v count:%d", err, len(bulks))
 						bulksLock.Unlock()
 						continue
 					}
 					for _, v := range bulkResponse.Failed() {
-						molog.ErrorLog.Printf("index: %s, type: %s, _id: %s, error: %+v\n", v.Index, v.Type, v.Id, *v.Error)
+						molog.Errorf("index: %s, type: %s, _id: %s, error: %+v", v.Index, v.Type, v.Id, *v.Error)
 					}
 					bulk.Reset()
 					bulks = make([]elastic.BulkableRequest, 0)
@@ -347,8 +305,8 @@ func main() {
 
 		for {
 			select {
-			case obj := <-insertes:
-				doc := elastic.NewBulkIndexRequest().Index(elasticIndex).Id(obj.ID).Doc(obj.Obj)
+			case obj := <-incrSyncChan:
+				doc := elastic.NewBulkIndexRequest().Index(config.ElasticIndex).Id(obj.ID).Doc(obj.Doc)
 				bulksLock.Lock()
 				bulks = append(bulks, doc)
 				bulksLock.Unlock()
@@ -360,20 +318,21 @@ func main() {
 
 	go func() {
 		for {
+			// 每20s同步一次到数据库 checkoutpoint
 			time.Sleep(time.Second * 20)
 			if ts.LatestOplogTimestamp.T > latestoplog.Timestamp.T {
 				f, err := os.Create(oplogFile)
 				if err != nil {
-					molog.ErrorLog.Printf("os create oplog file err:%v", err)
+					molog.Errorf("os create oplog file err:%v", err)
 					return
 				}
 				bytes, err := json.Marshal(ts)
 				if err != nil {
-					molog.ErrorLog.Printf("oplog json marshal err:%v,ts:%v", err, ts)
+					molog.Errorf("oplog json marshal err:%v,ts:%v", err, ts)
 				}
 				_, err = f.Write(bytes)
 				if err != nil {
-					molog.ErrorLog.Printf("oplog file writer err:%v", err)
+					molog.Errorf("oplog file writer err:%v", err)
 					return
 				}
 				err = f.Close()
@@ -385,10 +344,10 @@ func main() {
 	}()
 
 	for cursor.Next(context.Background()) {
-		o := OpLog{}
+		o := model.OpLog{}
 		err = cursor.Decode(&o)
 		if err != nil {
-			molog.ErrorLog.Printf("tail decode oplog.rs err:%v\n", err)
+			molog.Errorf("tail decode oplog.rs err:%v", err)
 			continue
 		}
 		ts.LatestOplogTimestamp = o.Timestamp
@@ -403,42 +362,38 @@ func main() {
 		switch o.Operation {
 		case "i":
 			delete(o.Doc, "_id")
-			var obj ElasticObj
-			obj.ID = id
-			obj.Obj = o.Doc
-			insertes <- obj
+			var doc model.MongoDoc
+			doc.ID = id
+			doc.Doc = o.Doc
+			incrSyncChan <- doc
 		case "d":
-			_, err := esCli.Delete().Index(elasticIndex).Id(id).Do(context.Background())
+			_, err := esCli.Delete().Index(config.ElasticIndex).Id(id).Do(context.Background())
 			if err != nil {
-				molog.ErrorLog.Printf("delete document in es err:%v id:%s\n", err, id)
+				molog.Errorf("delete document in es err:%v id:%s", err, id)
 				continue
 			}
 		case "u":
-			f := bson.M{
-				"_id": id,
-			}
+			f := bson.M{"_id": id}
 			if idTypeOf.String() == "primitive.ObjectID" {
 				id = o.Update["_id"].(primitive.ObjectID).Hex()
 				objId, err := primitive.ObjectIDFromHex(id)
 				if err != nil {
-					molog.ErrorLog.Printf("objectid id err:%v id:%s\n", err, id)
+					molog.Errorf("objectid id err:%v id:%s", err, id)
 					continue
 				}
-				f = bson.M{
-					"_id": objId,
-				}
+				f = bson.M{"_id": objId}
 			}
 			obj := make(map[string]interface{})
 			err = dbColl.FindOne(context.Background(), f).Decode(&obj)
 			if err != nil {
-				molog.ErrorLog.Printf("find document from mongodb  err:%v id:%s\n", err, id)
+				molog.Errorf("find document from mongodb  err:%v id:%s", err, id)
 				continue
 			}
 			delete(obj, "_id")
-			var elasticObj ElasticObj
-			elasticObj.ID = id
-			elasticObj.Obj = obj
-			insertes <- elasticObj
+			var mongoDoc model.MongoDoc
+			mongoDoc.ID = id
+			mongoDoc.Doc = obj
+			incrSyncChan <- mongoDoc
 		}
 	}
 }
