@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -158,6 +159,10 @@ func main() {
 								id = obj["_id"].(primitive.ObjectID).Hex()
 							case "string":
 								id = obj["_id"].(string)
+							case "int32":
+								id = strconv.Itoa(int(obj["_id"].(int32)))
+							case "int64":
+								id = strconv.Itoa(int(obj["_id"].(int64)))
 							}
 							delete(obj, "_id")
 							bytes, err := json.Marshal(obj)
@@ -358,6 +363,10 @@ func main() {
 			id = o.Doc["_id"].(primitive.ObjectID).Hex()
 		case "string":
 			id = o.Doc["_id"].(string)
+		case "int32":
+			id = strconv.Itoa(int(o.Doc["_id"].(int32)))
+		case "int64":
+			id = strconv.Itoa(int(o.Doc["_id"].(int64)))
 		}
 		switch o.Operation {
 		case "i":
@@ -382,6 +391,10 @@ func main() {
 					continue
 				}
 				f = bson.M{"_id": objId}
+			} else if idTypeOf.String() == "int32" {
+				f = bson.M{"_id": o.Doc["_id"].(int32)}
+			} else if idTypeOf.String() == "int64" {
+				f = bson.M{"_id": o.Doc["_id"].(int64)}
 			}
 			obj := make(map[string]interface{})
 			err = dbColl.FindOne(context.Background(), f).Decode(&obj)
