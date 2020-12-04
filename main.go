@@ -85,14 +85,14 @@ func main() {
 		molog.Errorf("connect es  err:%v", err)
 		return
 	}
-	molog.Infof("connect es success")
+	molog.Infoln("connect es success")
 	cli, err := mongo.Connect(context.Background(), options.Client().ApplyURI(config.MongodbUrl))
 	if err != nil {
 		molog.Errorf("mongo connect err:%v", err)
 		return
 	}
 	defer cli.Disconnect(context.Background())
-	molog.Infof("connect mongodb success")
+	molog.Infoln("connect mongodb success")
 
 	localColl := cli.Database("local").Collection("oplog.rs")
 	dbColl := cli.Database(config.MongoDB).Collection(config.MongoColl)
@@ -130,7 +130,7 @@ func main() {
 			molog.Errorf("find %s err:%v", config.MongoDB+"."+config.MongoColl, err)
 			return
 		}
-		molog.Infof("start sync historical data...")
+		molog.Infoln("start sync historical data...")
 
 		mapchan := make(chan map[string]interface{}, 10000)
 		syncg := sync.WaitGroup{}
@@ -211,7 +211,7 @@ func main() {
 		}
 		close(mapchan)
 		syncg.Wait()
-		molog.Infof("sync historical data success")
+		molog.Infoln("sync historical data success")
 		if config.SyncType == service.SyncTypeFull {
 			return
 		}
@@ -276,7 +276,7 @@ func main() {
 		return
 	}
 
-	molog.Infof("start sync increment data...")
+	molog.Infoln("start sync increment data...")
 	incrSyncChan := make(chan model.MongoDoc, service.MaxIncrSyncBatchInsertCount)
 
 	go func() {

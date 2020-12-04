@@ -42,7 +42,8 @@ func InitConfig(path string) Config {
 	}
 	config.ElasticIndex = strings.ToLower(config.MongoDB + "__" + config.MongoColl)
 	configInstance = config
-	molog.Infof(" init config success %+v,elastic index is : %s\n", config, config.ElasticIndex)
+	molog.Infof("init config success: %+v", config)
+	molog.Infof("elastic index is : %s", config.ElasticIndex)
 	return configInstance
 }
 
