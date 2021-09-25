@@ -1,8 +1,8 @@
 {
   "mongodb": "ShortVideoContent",
   "mongocoll": "playback_video",
-  "mongodburl": "mongodb://sg-mildom1.livenono.com:27101",
-  "esurl": "http://hw-sg-mildom-test1.livenono.com:9200",
+  "mongodburl": "mongodb://127.0.0.1:27101",
+  "esurl": "http://127.0.0.1:9200",
   "tspath": "./",
   "syncType": 0
 }
