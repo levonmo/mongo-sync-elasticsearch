@@ -35,7 +35,8 @@
 * check_point_path: 用于服务意外停止做数据恢复的，或断点续传时使用 (默认是程序执行所在的路径下oplogts文件夹保存同步状态)（1）当已经完成全量同步的时候，程序会在tspath路径下创建 oplogts/mydb_mycoll_latestoplog.log 文件，纪录下时间节点，意味着在该时间节点之前的数据都已完成同步，但当全量同步失败不会创建该文件 （2）每隔3秒就会更新 mydb_mycoll_latestoplog.log 文件里面的时间节点 （3）当服务意外停止时，并且不愿意再进行一次全量同步，只需同步服务停止之后还没同步的数据，则服务再次启动时check_point_path不能改变，让数据从check_point_path中恢复 （4）当服务意外停止时，并希望从0开始重新同步一次，则可以在oplogts文件夹下面删除对应的log文件 或 重新选择一个check_point_path即可
 * sync_type：同步类型。默认或不填表示：全量+增量，填 full 表示：只进行全量同步，填 incr 表示：只进行增量同步 
 
-### 3.备注:
+
+## 3.备注:
 * 1.涉及增量同步的部分，需要mongodb的部署形式是副本集 或者 单实例开启了oplog，参数mongodb_url中的mongodb用户需要拥有local库下的oplog.rs查询权限
 * 2.启动服务的用户需要拥有参数check_point_path路径下文件的创建查看删除权限
 
