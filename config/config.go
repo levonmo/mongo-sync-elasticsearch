@@ -6,26 +6,26 @@ import (
 	"os"
 	"strings"
 
-	"mongo-sync-elasticsearch/log"
+	"github.com/levonmo/mongo-sync-elasticsearch/log"
 )
 
-var configInstance Config
+var instance *Config
 
 type Config struct {
-	MongoDB      string `json:"mongodb"`
-	MongoColl    string `json:"mongocoll"`
-	MongodbUrl   string `json:"mongodburl"`
-	EsUrl        string `json:"esurl"`
-	Tspath       string `json:"tspath"`
-	SyncType     int    `json:"syncType"`
-	ElasticIndex string
+	MongoDbName      string `json:"mongo_db_name"`
+	MongoCollName    string `json:"mongo_coll_name"`
+	MongodbUrl       string `json:"mongodb_url"`
+	ElasticsearchUrl string `json:"elasticsearch_url"`
+	ElasticIndexName string `json:"elastic_index_name"`
+	CheckPointPath   string `json:"check_point_path"`
+	SyncType         string `json:"sync_type"`
 }
 
-func GetConfigInstance() Config {
-	return configInstance
+func GetInstance() *Config {
+	return instance
 }
 
-func InitConfig(path string) Config {
+func InitConfig(path string) *Config {
 	file, err := os.Open(path)
 	if err != nil {
 		panic(err)
@@ -35,16 +35,17 @@ func InitConfig(path string) Config {
 	if err != nil {
 		panic(err)
 	}
-	var config Config
+	var config *Config
 	err = json.Unmarshal(bytes[:n], &config)
 	if err != nil {
 		panic(err)
 	}
-	config.ElasticIndex = strings.ToLower(config.MongoDB + "__" + config.MongoColl)
-	configInstance = config
-	molog.Infof("init config success: %+v", config)
-	molog.Infof("elastic index is : %s", config.ElasticIndex)
-	return configInstance
+	if config.ElasticIndexName == "" {
+		config.ElasticIndexName = strings.ToLower(config.MongoDbName + "__" + config.MongoCollName)
+	}
+	instance = config
+	log.Info.Println("init config success")
+	return instance
 }
 
 func GetConfigPath() string {

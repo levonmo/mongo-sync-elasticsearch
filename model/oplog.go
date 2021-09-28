@@ -1,14 +1,15 @@
 package model
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
-type MongoDoc struct {
-	ID  string
-	Doc map[string]interface{}
+func ValidOps() bson.M {
+	return bson.M{"op": bson.M{"$in": OpCodes}}
 }
-type OplogTimestamp struct {
-	LatestOplogTimestamp primitive.Timestamp `json:"latest_oplog_timestamp"`
-}
+
+var OpCodes = [...]string{"c", "i", "u", "d"}
 
 type OpLog struct {
 	Timestamp    primitive.Timestamp    "ts"
@@ -20,4 +21,12 @@ type OpLog struct {
 	Update       map[string]interface{} "o2"
 }
 
+type MongoDoc struct {
+	Op     string
+	Doc    map[string]interface{}
+	Update map[string]interface{}
+}
 
+type OplogTimestamp struct {
+	LatestOplogTimestamp primitive.Timestamp `json:"latest_oplog_timestamp"`
+}
