@@ -41,4 +41,4 @@
 * 2.启动服务的用户需要拥有参数check_point_path路径下文件的创建查看删除权限
 
 ## 4.技术答疑和交流群
-![avatar](pic/qq群.jpg)
+![avatar](pic/qq群.png)
