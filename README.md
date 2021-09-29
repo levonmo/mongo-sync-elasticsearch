@@ -40,3 +40,5 @@
 * 1.涉及增量同步的部分，需要mongodb的部署形式是副本集 或者 单实例开启了oplog，参数mongodb_url中的mongodb用户需要拥有local库下的oplog.rs查询权限
 * 2.启动服务的用户需要拥有参数check_point_path路径下文件的创建查看删除权限
 
+## 4.技术答疑和交流群
+![avatar](pic/qq群.jpg)
