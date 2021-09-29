@@ -11,7 +11,7 @@
 {
   "mongo_db_name": "mydb",
   "mongo_coll_name": "mycoll",
-  "mongodb_url": "mongodb://127.0.0.1:27017/?connect=direct",
+  "mongodb_url": "mongodb://127.0.0.1:27017/",
   "elasticsearch_url": "http://127.0.0.1:9200",
   "elastic_index_name": "",
   "check_point_path": "",
