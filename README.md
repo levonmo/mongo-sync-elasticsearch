@@ -2,13 +2,9 @@
 
 
 ## 1.快速开始
-* linux:  mongo-sync-elasticsearch-linux -f config.json
-* windows：mongo-sync-elasticsearch-windows.exe -f config.json
-* mac:  mongo-sync-elasticsearch-mac -f config.json
-### 注：bin目录下的：
-* mongo-sync-elasticsearch-linux是linux的可执行文件
-* mongo-sync-elasticsearch-windows.exe是windows的可执行文件
-* mongo-sync-elasticsearch-mac是mac的可执行文件
+* linux: bin/mongo-sync-elasticsearch-linux -f config.json
+* windows: bin/mongo-sync-elasticsearch-windows.exe -f config.json
+* mac: bin/mongo-sync-elasticsearch-mac -f config.json
 
 ## 2.配置文件 config.json 内容如下
 ```
