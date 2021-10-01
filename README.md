@@ -6,7 +6,7 @@
 * windows: bin/mongo-sync-elasticsearch-windows.exe -f config.json
 * mac: bin/mongo-sync-elasticsearch-mac -f config.json
 
-## 2.配置文件 config.json 内容如下
+## 2.config.json:
 ```
 {
   "mongo_db_name": "mydb",
