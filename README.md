@@ -9,8 +9,8 @@
 ## 2.config.json:
 ```
 {
-  "mongo_db_name": "mydb",
-  "mongo_coll_name": "mycoll",
+  "mongo_db_name": "TestDb",
+  "mongo_coll_name": "TestColl",
   "mongodb_url": "mongodb://127.0.0.1:27017/",
   "elasticsearch_url": "http://127.0.0.1:9200",
   "elastic_index_name": "",
@@ -27,7 +27,7 @@
 * elasticsearch_url: 连接es的url
 
 ### 非必须参数:
-* elastic_index_name：同步之后elasticsearch索引的名字，不填默认是：数据库名小写 + "__" + 集合名字小写，例如：mydb__mycoll
+* elastic_index_name：同步之后elasticsearch索引的名字，不填默认是：数据库名小写 + "__" + 集合名字小写，例如：testdb__testcoll
 * check_point_path: 用于服务意外停止做数据恢复的，或断点续传时使用 (默认是程序执行所在的路径下oplogts文件夹保存同步状态)
 （1）当已经完成全量同步的时候，程序会在check_point_path路径下创建 oplogts/mydb_mycoll_latestoplog.log 文件，纪录下时间节点，意味着在该时间节点之前的数据都已完成同步，但当全量同步失败不会创建该文件 
 （2）每隔3秒就会更新 mydb_mycoll_latestoplog.log 文件里面的时间节点 
