@@ -93,12 +93,12 @@ func listenSyncIncrData2Elastic(incrSyncMongoDocChan chan model.MongoDoc) {
 			switch mongoDoc.Op {
 			case conts.OperationInsert:
 				bulksLock.Lock()
-				doc := elastic.NewBulkIndexRequest().Index(config.GetInstance().ElasticIndexName).Id(docId).Doc(doc).RetryOnConflict(conts.ElasticMaxRetryOnConflict)
+				doc := elastic.NewBulkIndexRequest().Index(config.GetInstance().ElasticIndexName).Type("_doc").Id(docId).Doc(doc).RetryOnConflict(conts.ElasticMaxRetryOnConflict)
 				bulks = append(bulks, doc)
 				bulksLock.Unlock()
 			case conts.OperationUpdate:
 				bulksLock.Lock()
-				doc := elastic.NewBulkUpdateRequest().Index(config.GetInstance().ElasticIndexName).Id(docId).Doc(doc).RetryOnConflict(conts.ElasticMaxRetryOnConflict)
+				doc := elastic.NewBulkUpdateRequest().Index(config.GetInstance().ElasticIndexName).Type("_doc").Id(docId).Doc(doc).RetryOnConflict(conts.ElasticMaxRetryOnConflict)
 				bulks = append(bulks, doc)
 				bulksLock.Unlock()
 			case conts.OperationDelete:

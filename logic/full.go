@@ -85,7 +85,7 @@ func listenFullSyncData(fullSyncMongoDocChan chan map[string]interface{}, fullSy
 					log.Info.Printf("sync full data json marshal err:%v id:%s", err, id)
 					continue
 				}
-				doc := elastic.NewBulkIndexRequest().Index(config.GetInstance().ElasticIndexName).Id(id).Doc(string(bytes))
+				doc := elastic.NewBulkIndexRequest().Index(config.GetInstance().ElasticIndexName).Type("_doc").Id(id).Doc(string(bytes))
 				bulks[count] = doc
 				count++
 			}
