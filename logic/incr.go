@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"os"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -127,6 +128,12 @@ func getDocId(mongoDoc model.MongoDoc) (string, map[string]interface{}) {
 	switch reflect.TypeOf(obj["_id"]).String() {
 	case "primitive.ObjectID":
 		docId = obj["_id"].(primitive.ObjectID).Hex()
+	case "string":
+		docId = obj["_id"].(string)
+	case "int32":
+		docId = strconv.Itoa(int(obj["_id"].(int32)))
+	case "int64":
+		docId = strconv.Itoa(int(obj["_id"].(int64)))
 	default:
 		docId = fmt.Sprintf("%d", obj["_id"])
 	}
