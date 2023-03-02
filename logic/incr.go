@@ -12,6 +12,7 @@ import (
 	"github.com/olivere/elastic"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"os"
 	"reflect"
@@ -98,9 +99,13 @@ func listenSyncIncrData2Elastic(incrSyncMongoDocChan chan model.MongoDoc) {
 				bulks = append(bulks, doc)
 				bulksLock.Unlock()
 			case conts.OperationUpdate:
+				// Fix bug that program won't work for mongo 4.4
 				bulksLock.Lock()
-				doc := elastic.NewBulkUpdateRequest().Index(config.GetInstance().ElasticIndexName).Type("_doc").Id(docId).Doc(doc).RetryOnConflict(conts.ElasticMaxRetryOnConflict)
-				bulks = append(bulks, doc)
+				latestDocsMatchingUpdateQuery := findLatestDocs(&mongoDoc)
+				for _, theDoc := range latestDocsMatchingUpdateQuery {
+					doc := elastic.NewBulkUpdateRequest().Index(config.GetInstance().ElasticIndexName).Type("_doc").Id(docId).Doc(theDoc).RetryOnConflict(conts.ElasticMaxRetryOnConflict)
+					bulks = append(bulks, doc)
+				}
 				bulksLock.Unlock()
 			case conts.OperationDelete:
 				_, err := repo.GetElasticClient().Delete().Index(config.GetInstance().ElasticIndexName).Type("_doc").Id(docId).Do(context.Background())
@@ -114,6 +119,34 @@ func listenSyncIncrData2Elastic(incrSyncMongoDocChan chan model.MongoDoc) {
 			}
 		}
 	}()
+}
+
+func findLatestDocs(doc *model.MongoDoc) []map[string]interface{} {
+	query := doc.Update
+	db := repo.GetMongoClient().Database(config.GetInstance().MongoDbName)
+
+	var cursor *mongo.Cursor
+	var err error
+
+	cursor, err = db.Collection(config.GetInstance().MongoCollName).Find(context.TODO(), query)
+	if err != nil {
+		log.Err.Println("Querying mongodb db error when syncing updates.")
+		return make([]map[string]interface{}, 0)
+	}
+
+	// TODO: stupid code, I don't know how to use a dynamic arr in go
+	nonIdCarryingDocs := make([]map[string]interface{}, 0)
+	for cursor.Next(context.TODO()) {
+		var res = make(map[string]interface{})
+		if err = cursor.Decode(&res); err != nil {
+			log.Err.Println("Error decoding ")
+		}
+		delete(res, "_id")
+		nonIdCarryingDocs = append(nonIdCarryingDocs, res)
+	}
+
+	return nonIdCarryingDocs
+
 }
 
 func getDocId(mongoDoc model.MongoDoc) (string, map[string]interface{}) {
