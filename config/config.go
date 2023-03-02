@@ -15,7 +15,11 @@ type Config struct {
 	MongoDbName      string `json:"mongo_db_name"`
 	MongoCollName    string `json:"mongo_coll_name"`
 	MongodbUrl       string `json:"mongodb_url"`
+
 	ElasticsearchUrl string `json:"elasticsearch_url"`
+	ElasticsearchUsername string `json:"elasticsearch_username"`
+	ElasticsearchPassword string `json:"elasticsearch_password"`
+
 	ElasticIndexName string `json:"elastic_index_name"`
 	CheckPointPath   string `json:"check_point_path"`
 	SyncType         string `json:"sync_type"`

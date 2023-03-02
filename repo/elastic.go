@@ -14,7 +14,21 @@ func GetElasticClient() *elastic.Client {
 }
 
 func InitElastic() {
-	cli, err := elastic.NewClient(elastic.SetSniff(false), elastic.SetURL(config.GetInstance().ElasticsearchUrl))
+
+	var cli *elastic.Client
+	var err error
+
+	if len(config.GetInstance().ElasticsearchUsername) == 0 {
+		cli, err = elastic.NewClient(
+			elastic.SetSniff(false),
+			elastic.SetURL(config.GetInstance().ElasticsearchUrl))
+	} else {
+		cli, err = elastic.NewClient(
+			elastic.SetSniff(false),
+			elastic.SetURL(config.GetInstance().ElasticsearchUrl),
+			elastic.SetBasicAuth(config.GetInstance().ElasticsearchUsername, config.GetInstance().ElasticsearchPassword))
+	}
+
 	if err != nil {
 		msg := fmt.Sprintf("connect elastic fail， err:%v", err)
 		log.Err.Println(msg)
